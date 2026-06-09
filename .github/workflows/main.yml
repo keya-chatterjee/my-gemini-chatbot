@@ -1,30 +1,43 @@
-name: Build and Push Chatbot Container to Docker Hub
+name: Deploy Full-Stack Chatbot Locally
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  deploy-local:
+    # This explicitly routes the commands to your MacBook's active terminal runner!
+    runs-on: self-hosted
 
     steps:
-    - name: Step 1 - Check out code from GitHub
+    - name: Step 1 - Pull latest code from GitHub
       uses: actions/checkout@v3
 
-    - name: Step 2 - Log into Docker Hub Cloud Account
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Step 2 - Clean up old running containers
+      run: |
+        docker stop chatbot-frontend chatbot-backend || true
+        docker rm chatbot-frontend chatbot-backend || true
 
-    - name: Step 3 - Set up Docker Build Machinery
-      uses: docker/setup-buildx-action@v2
+    - name: Step 3 - Build Backend API Container
+      run: |
+        docker build -t local-chatbot-backend ./backend
 
-    - name: Step 4 - Manufacture and Push the Finished Container
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/my-first-chatbot:latest
+    - name: Step 4 - Build Frontend UI Container
+      run: |
+        docker build -t local-chatbot-frontend ./frontend
+
+    - name: Step 5 - Spin Up the Backend API Server
+      # We inject your secret Gemini Key straight into the container's environment memory
+      run: |
+        docker run -d \
+          --name chatbot-backend \
+          -p 8000:8000 \
+          -e GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}" \
+          local-chatbot-backend
+
+    - name: Step 6 - Spin Up the Visual Frontend UI
+      run: |
+        docker run -d \
+          --name chatbot-frontend \
+          -p 8501:8501 \
+          local-chatbot-frontend
