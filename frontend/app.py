@@ -24,7 +24,7 @@ if prompt := st.chat_input("Ask me anything..."):
     # 2. Package the message and send it across the network to your FastAPI server
     try:
         # We target the exact address and custom '/chat' endpoint your backend is listening on
-        response = requests.post("http://127.0.0.1:8000/chat", json={"message": prompt})
+        response = requests.post("http://host.docker.internal:8000/chat", json={"message": prompt})
         
         if response.status_code == 200:
             # Extract the raw AI text out of the backend's JSON package
